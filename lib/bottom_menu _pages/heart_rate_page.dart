@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -27,6 +28,8 @@ class _HeartRatePageState extends State<HeartRatePage> {
 
   bool isDataLoaded = false;
 
+  late double lat, lng;
+
   @override
   void initState() {
     // TODO: implement initState
@@ -41,6 +44,11 @@ class _HeartRatePageState extends State<HeartRatePage> {
     });
 
     getCurrentLocationLatLng();
+    getActivityRecognitionPermission();
+
+    Timer.periodic(const Duration(minutes: 1), (timer) {
+      uploadLocationToServer(lat, lng);
+    });
 
   }
 
@@ -319,49 +327,45 @@ class _HeartRatePageState extends State<HeartRatePage> {
       }
     }
 
-    showCustomDialog(context);
-
-    getUserLocation().then((value) async {
-      print(value.latitude.toString());
-      print(value.longitude.toString());
-
-      var dataModel = DataModel(lat: value.latitude.toString(), longt: value.longitude.toString(), userId: 333444555);
-      var response = await sendPostData("https://wsfttestapi.withstandfitness.com/DatatSync/syncLocation", dataModel).catchError((err){
-        print(err.toString());
-      }); ///SEND_USER_OTP
-
-      print(response);
-
-      if(response == "true"){
-        Get.back();
-        Fluttertoast.showToast(
-            msg: "Latitude and Longitude updated to server",
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
-            fontSize: 16.0
-        );
-
-        Future.delayed(const Duration(seconds: 2), () {
-          getActivityRecognitionPermission();
-        });
-
-      }else{
-        Fluttertoast.showToast(
-            msg: "Server error!",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            fontSize: 16.0
-        );
-      }
-
+    Geolocator.getPositionStream().listen((value) async {
+     setState(() {
+       lat = value.latitude;
+       lng = value.longitude;
+     });
     });
 
+  }
+
+  uploadLocationToServer(double lat, double lng) async {
+    var dataModel = DataModel(lat: lat.toString(), longt: lng.toString(), userId: 333444555);
+    var response = await sendPostData("https://wsfttestapi.withstandfitness.com/DatatSync/syncLocation", dataModel).catchError((err){
+      print(err.toString());
+    });
+
+    print(response);
+
+    if(response == "true"){
+      Fluttertoast.showToast(
+          msg: "Latitude and Longitude updated to server",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+
+    }else{
+      Fluttertoast.showToast(
+          msg: "Server error!",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
   }
 
   showCustomDialog(BuildContext dialogContext) {
